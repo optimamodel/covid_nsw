@@ -193,7 +193,7 @@ if whattorun=='tracingsweeps':
     results = {k:{} for k in res_to_keep}
     labels = []
 
-    for future_test_prob in [0.067]:#, 0.1, 0.15, 0.19]:
+    for future_test_prob in [0.1]:#, 0.1, 0.15, 0.19]:
 
         for name in res_to_keep: results[name][future_test_prob] = {}
         for venue_trace_prob in np.arange(0, 5) / 4:
