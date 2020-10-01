@@ -39,11 +39,17 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
                  ]
 
     # Approximate a mask intervention by changing beta in all layers where people would wear masks - assuming not in schools, sport, social gatherings, or home
-    mask_uptake_aug = 0.1
+    mask_uptake_aug = 0.15
+    mask_uptake_sep = 0.3
     mask_beta_change_aug = (1-mask_uptake_aug)*comm_beta_aug + mask_uptake_aug*mask_eff*comm_beta_aug
-    ints += [cv.change_beta(days=['2020-08-01', today] * 8, changes=[mask_beta_change_aug, 0.7] * 8,
+    mask_beta_change_sep = (1-mask_uptake_sep)*comm_beta_aug + mask_uptake_sep*mask_eff*comm_beta_aug
+    ints += [cv.change_beta(days=['2020-08-01', '2020-08-31'] * 8, changes=[mask_beta_change_aug, 0.7] * 8,
                                  layers=['church', 'C', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport',
-                                         'public_parks', 'large_events'])]
+                                         'public_parks', 'large_events']),
+             cv.change_beta(days=['2020-09-01', today] * 8, changes=[mask_beta_change_sep, 0.7] * 8,
+                            layers=['church', 'C', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport',
+                                    'public_parks', 'large_events'])
+             ]
 
     if make_future_ints:
         ints += [cv.change_beta(days=[today] * 8, changes=[(1 - mask_uptake) * comm_beta_aug + mask_uptake * mask_eff * comm_beta_aug] * 8,
@@ -54,14 +60,15 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
     symp_prob_prelockdown = 0.04  # Limited testing pre lockdown
     symp_prob_lockdown = 0.07  # 0.065 #Increased testing during lockdown
     symp_prob_postlockdown = 0.19 # 0.165 # Testing since lockdown
-    asymp_quar_prob_postlockdown = (1-(1-symp_prob_postlockdown)**10)/2
+    asymp_quar_prob_postlockdown = (1-(1-symp_prob_postlockdown)**10)
+    future_asymp_test_prob = (1-(1-future_test_prob)**10)
 
     ints += [cv.test_prob(start_day=0, end_day=lockdown, symp_prob=symp_prob_prelockdown, asymp_quar_prob=0.01, do_plot=False),
              cv.test_prob(start_day=lockdown, end_day=reopen2, symp_prob=symp_prob_lockdown, asymp_quar_prob=0.01,do_plot=False),
              cv.test_prob(start_day=reopen2, end_day=today, symp_prob=symp_prob_postlockdown, asymp_quar_prob=asymp_quar_prob_postlockdown,do_plot=True)]
 
     if make_future_ints:
-        ints += [cv.test_prob(start_day=tomorrow, symp_prob=future_test_prob, asymp_quar_prob=future_test_prob/2, do_plot=True)]
+        ints += [cv.test_prob(start_day=tomorrow, symp_prob=future_test_prob, asymp_quar_prob=future_asymp_test_prob, do_plot=True)]
 
     # Tracing
     trace_probs = {'H': 1, 'S': 0.95, # Home and school
@@ -91,7 +98,7 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
                                     trace_time=trace_time_f, distribute_times=True, start_day=tomorrow, do_plot=False)]
 
     # Close borders, then open them again to account for Victorian imports and leaky quarantine
-    ints += [cv.dynamic_pars({'n_imports': {'days': [14, 110, 116], 'vals': [0, 7, 0]}}, do_plot=False)]
+    ints += [cv.dynamic_pars({'n_imports': {'days': [14, 112, 116], 'vals': [0, 8, 0]}}, do_plot=False)]
 
     return ints
 
@@ -107,7 +114,7 @@ def make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_t
             'pop_scale': 75,
             'rescale': True,
             'rand_seed': 1,
-            'beta': 0.024595,#0.02465,  Overall beta to use for calibration
+            'beta': 0.0247, #0.024595,#0.02465,  Overall beta to use for calibration [0.0242, 0.02445, 0.02462, 0.02447 GOOD, 0.02437 GOOD] (0.02467,0.02456 maybe with higher sep masks), 0.02446 close
                                     # H     S       W       C       church  psport  csport  ent     cafe    pub     trans   park    event   soc
             'contacts':    pd.Series([4,    21,     5,      1,      20,     40,     30,     25,     19,     30,     25,     10,     50,     6], index=layers).to_dict(),
             'beta_layer':  pd.Series([1,    0.25,   0.3,    0.1,    0.04,   0.2,    0.1,    0.01,   0.04,   0.06,   0.16,   0.03,   0.01,   0.3], index=layers).to_dict(),
@@ -135,11 +142,11 @@ def make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_t
 T = sc.tic()
 
 # Settings
-whattorun = ['calibration', 'tracingsweeps', 'maskscenarios'][0]
+whattorun = ['calibration', 'tracingsweeps', 'maskscenarios'][1]
 domulti = False
 doplot = True
 dosave = True
-n_runs = 6
+n_runs = 20
 
 # Filepaths
 resultsfolder = 'sweeps'
@@ -175,18 +182,18 @@ if whattorun=='calibration':
         if dosave: s0.save(f'{resultsfolder}/nsw_{whattorun}_single.obj')
         if doplot:
             s0.plot(to_plot=to_plot, do_save=True, do_show=False, fig_path=f'{figsfolder}/nsw_{whattorun}.png',
-                  legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=28)
+                  legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=35)
 
 
 
 if whattorun=='tracingsweeps':
 
-    res_to_keep = ['cum_infections', 'new_infections']
+    res_to_keep = ['cum_infections', 'new_infections', 'cum_quarantined']
 
     results = {k:{} for k in res_to_keep}
     labels = []
 
-    for future_test_prob in [0.19]:#, 0.1, 0.15, 0.19]:
+    for future_test_prob in [0.067]:#, 0.1, 0.15, 0.19]:
 
         for name in res_to_keep: results[name][future_test_prob] = {}
         for venue_trace_prob in np.arange(0, 5) / 4:
@@ -214,6 +221,7 @@ if whattorun=='tracingsweeps':
                 if dosave:
                     msim.save(f'{resultsfolder}/nsw_{whattorun}_T{int(future_test_prob*100)}_M{int(mask_uptake*100)}_V{int(venue_trace_prob*100)}.obj')
                 results['cum_infections'][future_test_prob][venue_trace_prob].append(msim.results['cum_infections'].values[-1]-msim.results['cum_infections'].values[214])
+                results['cum_quarantined'][future_test_prob][venue_trace_prob].append(msim.results['cum_quarantined'].values[-1]-msim.results['cum_quarantined'].values[214])
                 results['new_infections'][future_test_prob][venue_trace_prob].append(msim.results['new_infections'].values)
     if dosave:
         sc.saveobj(f'{resultsfolder}/nsw_sweep_results.obj', results)

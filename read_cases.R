@@ -13,7 +13,7 @@ library (dplyr)
 library (lubridate)
 library (ggpubr)
 
-today = "2020/9/23"
+today = "2020/9/30"
 
 # Set working directory
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -50,11 +50,11 @@ sum(locunknown$new_diagnoses)
 #              rename(date=notification_date,new_diagnoses=n))  %>% replace(is.na(.), 0)
 
 
-nsw_epi_data <- read.csv("inputs/nsw_epi_data.csv")
+nsw_epi_data <- read.csv("nsw_epi_data.csv")
 
-ss$new_deaths <- c(nsw_epi_data$new_deaths[-(1:8)],rep(0,42))
+ss$new_deaths <- c(nsw_epi_data$new_deaths[-(1:8)],rep(0,49))
 
-write.csv(ss,"inputs/nsw_epi_data_os_removed.csv")  
+write.csv(ss,"nsw_epi_data_os_removed.csv")  
 
 ########################################
 # Read testing data
