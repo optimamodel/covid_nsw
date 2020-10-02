@@ -11,8 +11,6 @@ def make_people(seed, pop_size):
     households = pd.read_csv('data/households.csv', index_col='size', squeeze=True)
     layers = pd.read_csv('layers.csv', index_col='layer')
 
-    print('TODO - asymmetric mixing matrix')
-    mixing_H = (mixing_H + mixing_H.T) / 2
     cv.set_seed(seed)
 
     # First, generate the household layer (produces a cv.People object with one layer only)
@@ -31,5 +29,3 @@ if __name__ == '__main__':
     with sc.Timer(label='Make people'):
         people = make_people(seed=1, pop_size=100e3)
         # sc.saveobj('nswppl.pop', people)
-
-old = sc.loadobj('nswppl.pop')

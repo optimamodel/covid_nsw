@@ -4,6 +4,7 @@ import pandas as pd
 import sciris as sc
 import numpy as np
 import make_nsw_pop
+import population
 from collections import defaultdict
 
 today = '2020-09-30'
@@ -147,13 +148,13 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
 
     # Close borders, then open them again to account for Victorian imports and leaky quarantine
     ints += [cv.dynamic_pars({'n_imports': {'days': [14, 110, 116], 'vals': [0, 7, 0]}}, do_plot=False)]
-
+    ints.insert(0,population.UpdateNetworks())
     return ints
 
 
 def make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=None):
 
-    layers = ['H', 'S', 'W', 'C', 'church', 'pSport', 'cSport', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport', 'public_parks', 'large_events', 'social']
+    layers = pd.read_csv('layers.csv',index_col='layer')
 
     end_day = runtil
 
@@ -163,11 +164,10 @@ def make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_t
             'rescale': True,
             'rand_seed': 1,
             'beta': 0.024595,#0.02465,  Overall beta to use for calibration
-                                    # H     S       W       C       church  psport  csport  ent     cafe    pub     trans   park    event   soc
-            'contacts':    pd.Series([4,    21,     5,      1,      20,     40,     30,     25,     19,     30,     25,     10,     50,     6], index=layers).to_dict(),
-            'beta_layer':  pd.Series([1,    0.25,   0.3,    0.1,    0.04,   0.2,    0.1,    0.01,   0.04,   0.06,   0.16,   0.03,   0.01,   0.3], index=layers).to_dict(),
-            'iso_factor':  pd.Series([0.2,  0,      0,      0.1,    0,      0,      0,      0,      0,      0,      0,      0,      0,      0], index=layers).to_dict(),
-            'quar_factor': pd.Series([1,    0.1,    0.1,    0.2,    0.01,   0,      0,      0,      0,      0,      0.1 ,   0,      0,      0], index=layers).to_dict(),
+            'contacts':    layers['contacts'].to_dict(),
+            'beta_layer':  layers['beta_layer'].to_dict(),
+            'iso_factor':  layers['iso_factor'].to_dict(),
+            'quar_factor': layers['quar_factor'].to_dict(),
             'n_imports': 2, # Number of new cases to import per day -- varied over time as part of the interventions
             'start_day': '2020-03-01',
             'end_day': end_day,
@@ -211,8 +211,8 @@ to_plot = sc.objdict({
     'Active infections': ['n_exposed']
     })
 
-people = make_nsw_pop.make_people(seed=1,pop_size=1e5)
-
+with sc.Timer(label='Make people') as _:
+    people = make_nsw_pop.make_people(seed=1,pop_size=1e5)
 
 # Make sim for calibration
 if whattorun=='calibration':

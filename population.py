@@ -51,7 +51,7 @@ def generate_people(n_people: int, mixing: pd.DataFrame, reference_ages: pd.Seri
     return people
 
 
-def add_school_contacts(people: cv.People, mean_contacts: float, legacy=True):
+def add_school_contacts(people: cv.People, mean_contacts: float):
     """Create school contacts, with children of each age clustered in groups"""
 
     classrooms = []
@@ -60,12 +60,6 @@ def add_school_contacts(people: cv.People, mean_contacts: float, legacy=True):
         children_thisage = cvu.true(people.age == age)
         classrooms.extend(cvv.create_clusters(children_thisage, mean_contacts))
 
-    if legacy:
-        for i in range(len(classrooms)):
-            adult_idx = cvu.true(people.age > 18)
-            adult_uid = [np.random.choice(adult_idx)]
-            classrooms[i].extend(adult_uid)
-    else:
         teachers = np.random.choice(cvu.true(people.age > 21), len(classrooms), replace=False)
         for i in range(len(classrooms)):
             classrooms[i].append(teachers[i])
@@ -101,18 +95,9 @@ def add_other_contacts(people: cv.People, layers: pd.DataFrame, legacy=True):
 
         age_min = 0 if pd.isna(layer['age_lb']) else layer['age_lb']
         age_max = np.inf if pd.isna(layer['age_ub']) else layer['age_ub']
-
-        if legacy:
-            if layer_name == 'C':
-                inds = people.uid
-            else:
-                n_people = int(layer['proportion'] * people.pop_size)
-                inds = np.random.choice(cvu.true((people.age > age_min) & (people.age < age_max)), n_people)
-                print('TODO - sample without replacement')
-        else:
-            age_eligible = cvu.true((people.age >= age_min) & (people.age <= age_max))
-            n_people = int(layer['proportion'] * len(age_eligible))
-            inds = np.random.choice(age_eligible, n_people, replace=False)
+        age_eligible = cvu.true((people.age >= age_min) & (people.age <= age_max))
+        n_people = int(layer['proportion'] * len(age_eligible))
+        inds = np.random.choice(age_eligible, n_people, replace=False)
 
         if layer['cluster_type'] == 'cluster':
             # Create a clustered layer based on the mean cluster size
@@ -136,7 +121,7 @@ class RandomLayer(cv.Layer):
     Layer that can resample contacts on-demand
     """
 
-    def __init__(self, inds, mean_contacts, dispersion=None, dynamic=False, legacy=True):
+    def __init__(self, inds, mean_contacts, dispersion=None, dynamic=False):
         """
 
         Args:
@@ -150,43 +135,7 @@ class RandomLayer(cv.Layer):
         self.mean_contacts = mean_contacts
         self.dispersion = dispersion
         self.dynamic = dynamic
-
-        if legacy:
-            print('TODO - replace legacy initialization with update()')
-            self.legacy_initialize()
-        else:
-            self.update(force=True)
-
-    def legacy_initialize(self):
-        # Legacy initialization
-
-        n_people = len(self.inds)
-
-        if pd.isna(self.dispersion):
-            number_of_contacts = cvu.n_poisson(rate=self.mean_contacts, n=n_people)
-        else:
-            number_of_contacts = cvu.n_neg_binomial(rate=self.mean_contacts, dispersion=self.dispersion, n=n_people)
-
-        source, target = self._get_contacts(self.inds, number_of_contacts)
-
-        contacts = {}
-        count = 0
-        for i, person_id in enumerate(self.inds):
-            n_contacts = number_of_contacts[i]
-            contacts[person_id] = target[count:count + n_contacts]
-            count += n_contacts
-
-        p1 = []
-        p2 = []
-        for a1, b1 in contacts.items():
-            p1.extend([a1] * len(b1))
-            p2.extend(b1)
-
-        self['p1'] = np.array(p1, dtype=cvd.default_int)
-        self['p2'] = np.array(p2, dtype=cvd.default_int)
-        self['beta'] = np.ones(len(p1), dtype=cvd.default_float)
-        self.validate()
-
+        self.update(force=True)
 
     @staticmethod
     @nb.njit
@@ -286,7 +235,7 @@ def create_clusters(people_to_cluster: list, mean_cluster_size: float) -> list:
     return clusters
 
 
-def clusters_to_layer(clusters: list, legacy=True):
+def clusters_to_layer(clusters: list):
     """
     Convert a list of clusters to a Covasim layer
 
@@ -311,35 +260,6 @@ def clusters_to_layer(clusters: list, legacy=True):
                 if j != i:
                     p1.append(i)
                     p2.append(j)
-
-    if legacy:
-        print('TODO - disable legacy order')
-        # Use the old method incorporating an intermediate set conversion and dict conversion to populate the layer
-        # in the same order as before, for comparison to earlier results. The contacts being added should be identical
-        contacts = defaultdict(set)  # Note that since we are adding ints, the hash is the integer value, and thus while the set order is 'random' it is deterministic for the same inputs
-        for cluster in clusters:
-            for i in cluster:
-                for j in cluster:
-                    if j <= i:
-                        pass
-                    else:
-                        contacts[i].add(j)
-                        contacts[j].add(i)
-
-        contacts = {x: np.array(list(y)) for x, y in contacts.items()}
-
-        old_p1 = []
-        old_p2 = []
-        for a1, b1 in contacts.items():
-            old_p1.extend([a1] * len(b1))
-            old_p2.extend(b1)
-
-        o = {(a, b) for a, b in zip(old_p1, old_p2)}
-        n = {(a, b) for a, b in zip(p1, p2)}
-        assert o == n  # Make sure that the pairs being added to the layer are actually the same
-
-        p1 = old_p1
-        p2 = old_p2
 
     layer = cv.Layer()
     layer['p1'] = np.array(p1, dtype=cvd.default_int)
@@ -405,26 +325,16 @@ class AliasSample():
         return sample(n, self.q, self.J, r1, r2)
 
 
-def _sample_household_cluster(sampler, bin_lower, bin_upper, reference_age, n, mixing_matrix=None):
+def _sample_household_cluster(sampler, bin_lower, bin_upper, reference_age, n):
     """
     Return list of ages in a household/location based on mixing matrix and reference person age
-
-    TODO - remove mixing_matrix argument to use fast sampling
     """
 
     ages = [reference_age]  # The reference person is in the household/location
 
-    if mixing_matrix is not None:
-        print('Using legacy sampling')
-
     if n > 1:
         idx = np.digitize(reference_age, bin_lower) - 1  # First, find the index of the bin that the reference person belongs to
-
-        if mixing_matrix is not None:
-            p = mixing_matrix.iloc[idx, :]
-            sampled_bins = np.random.choice(len(bin_lower), n - 1, replace=True, p=p / sum(p))
-        else:
-            sampled_bins = sampler[idx].draw_n(n - 1)
+        sampled_bins = sampler[idx].draw_n(n - 1)
 
         for bin in sampled_bins:
             ages.append(int(round(np.random.uniform(bin_lower[bin] - 0.5, bin_upper[bin] + 0.5))))
@@ -473,7 +383,7 @@ def _make_households(n_households, pop_size, household_heads, mixing_matrix):
                                                        age_lb,
                                                        age_ub,
                                                        head,
-                                                       h_size, mixing_matrix)
+                                                       h_size)
             # add ages to ages array
             ub = p_added + h_size
             ages[p_added:ub] = household_ages
