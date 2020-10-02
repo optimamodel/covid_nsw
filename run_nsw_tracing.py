@@ -1,11 +1,66 @@
 import covasim as cv
+import covasim.utils as cvu
 import pandas as pd
 import sciris as sc
 import numpy as np
+import make_nsw_pop
+from collections import defaultdict
 
 today = '2020-09-30'
 tomorrow = '2020-10-01'
 runtil = '2020-12-31'
+
+class contact_tracing_distributed(cv.contact_tracing):
+    def __init__(self, distribute_times, *args, **kwargs):
+        super().__init__(*args, **kwargs) # Initialize the Intervention object
+        self.distribute_times   = distribute_times
+
+    def initialize(self, sim):
+        super().initialize(sim)
+        if self.distribute_times is not None and not sc.isiterable(self.distribute_times):
+            val = self.distribute_times
+            self.distribute_times = {k:val for k in sim.people.layer_keys()}
+
+    def apply(self, sim):
+        t = sim.t
+        if t < self.start_day:
+            return
+        elif self.end_day is not None and t > self.end_day:
+            return
+
+        # Figure out whom to test and trace
+        if not self.presumptive:
+            trace_from_inds = cvu.true(sim.people.date_diagnosed == t) # Diagnosed this time step, time to trace
+        else:
+            just_tested = cvu.true(sim.people.date_tested == t) # Tested this time step, time to trace
+            trace_from_inds = cvu.itruei(sim.people.exposed, just_tested) # This is necessary to avoid infinite chains of asymptomatic testing
+
+        to_trace = defaultdict(set)
+
+        if len(trace_from_inds): # If there are any just-diagnosed people, go trace their contactsd
+            traceable_layers = {k:v for k,v in self.trace_probs.items() if v != 0.} # Only trace if there's a non-zero tracing probability
+            for lkey,this_trace_prob in traceable_layers.items():
+                if sim.people.pars['beta_layer'][lkey]: # Skip if beta is 0 for this layer
+                    # Find all the contacts of these people
+                    traceable_inds = sim.people.contacts[lkey].find_contacts(trace_from_inds)
+                    if len(traceable_inds):
+                        contact_inds = cvu.binomial_filter(this_trace_prob, traceable_inds) # Filter the indices according to the probability of being able to trace this layer
+                        if len(contact_inds):
+                            if (self.distribute_times is None) or (self.distribute_times[lkey] is False):
+                                this_trace_time = self.trace_time[lkey]
+                            else:
+                                this_trace_time = cvu.n_poisson(self.trace_time[lkey], len(contact_inds))
+
+                        for ind, t in zip(contact_inds, this_trace_time):
+                            to_trace[t].add(ind)
+
+        for trace_time, inds in to_trace.items():
+            inds = np.fromiter(inds,dtype=np.int64)
+            sim.people.known_contact[inds] = True
+            sim.people.date_known_contact[inds]  = np.fmin(sim.people.date_known_contact[inds], sim.people.t+trace_time) # Record just first time they were notified
+            sim.people.schedule_quarantine(inds, sim.people.t+trace_time, sim.people.pars['quar_period']-trace_time) # Schedule quarantine for the notified people to start on the date they will be notified. Note that the quarantine duration is based on the time since last contact, rather than time since notified
+
+        return
 
 def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3):
     # Make historical interventions
@@ -82,10 +137,10 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
                    'church': 1, 'entertainment': 1, 'cafe_restaurant': 1, 'pub_bar': 1, 'large_events': 1, # Venue-based: [0.068, 0.203, 0.338, 0.429, 0.474, 0.492, 0.498, 0.499]
                    'transport': 2, # Transport: [0.014, 0.041, 0.068, 0.086, 0.095, 0.098, 0.100, 0.100]
                    }
-    ints += [cv.contact_tracing(trace_probs=trace_probs, trace_time=trace_time, distribute_times=True, start_day=0, end_day=today, do_plot=False)]
+    ints += [contact_tracing_distributed(trace_probs=trace_probs, trace_time=trace_time, distribute_times=True, start_day=0, end_day=today, do_plot=False)]
 
     if make_future_ints:
-        ints += [cv.contact_tracing(trace_probs={'H': 1, 'S': 0.95, 'W': 0.8, 'pSport': 0.8, 'cSport': 0.8, 'social': 0.8,
+        ints += [contact_tracing_distributed(trace_probs={'H': 1, 'S': 0.95, 'W': 0.8, 'pSport': 0.8, 'cSport': 0.8, 'social': 0.8,
                                                  'C': 0.05, 'public_parks': 0.05,
                                                  'church': venue_trace_prob, 'entertainment': venue_trace_prob, 'cafe_restaurant': venue_trace_prob, 'pub_bar': venue_trace_prob, 'large_events': venue_trace_prob, 'transport': 0.1},
                                     trace_time=trace_time_f, distribute_times=True, start_day=tomorrow, do_plot=False)]
@@ -156,11 +211,15 @@ to_plot = sc.objdict({
     'Active infections': ['n_exposed']
     })
 
+people = make_nsw_pop.make_people(seed=1,pop_size=1e5)
+
+
 # Make sim for calibration
 if whattorun=='calibration':
 
+
     s0 = make_sim(do_make_ints=True, mask_uptake=0.3, venue_trace_prob=0.5, future_test_prob=0.9, mask_eff=0.3, load_pop=True,
-             popfile='nswppl.pop', datafile=datafile)
+             popfile=people, datafile=datafile)
 
     if domulti:
         msim = cv.MultiSim(base_sim=s0)
@@ -195,7 +254,7 @@ if whattorun=='tracingsweeps':
 
                 # Make original sim
                 s0 = make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake, venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob, mask_eff=0.3, load_pop=True,
-                              popfile='nswppl.pop', datafile=datafile)
+                              popfile=people, datafile=datafile)
                 s0.run(until=today)
                 print(f'mask_uptake: {mask_uptake}, venue_trace_prob: {venue_trace_prob}, future_test_prob: {future_test_prob}')
 
@@ -233,7 +292,8 @@ if whattorun=='maskscenarios':
     for jb in mask_beta_change:
 
         # Make original sim
-        s0 = make_sim(mask_beta_change=jb, load_pop=True, popfile='nswppl.pop', datafile=datafile)
+
+        s0 = make_sim(mask_beta_change=jb, load_pop=True, popfile=people, datafile=datafile)
         s0.run(until=today)
 
         # Copy sims
