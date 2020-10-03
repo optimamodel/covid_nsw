@@ -42,7 +42,7 @@ if process:
                 for mask_uptake in mlevels:
                     print(f'mask_uptake: {mask_uptake}, venue_trace_prob: {venue_trace_prob}, future_test_prob: {future_test_prob}')
                     msim = sc.loadobj(f'{thisfig}/nsw_tracingsweeps_T{int(future_test_prob * 100)}_M{int(mask_uptake * 100)}_V{int(venue_trace_prob * 100)}.obj')
-                    results['cum_quarantined'][future_test_prob][venue_trace_prob].append(msim.results['cum_infections'].values[-1]-msim.results['cum_quarantined'].values[244])
+                    results['cum_quarantined'][future_test_prob][venue_trace_prob].append(msim.results['cum_quarantined'].values[-1]-msim.results['cum_quarantined'].values[244])
                     results['cum_infections'][future_test_prob][venue_trace_prob].append(msim.results['cum_infections'].values[-1]-msim.results['cum_infections'].values[244])
                     results['r_eff'][future_test_prob][venue_trace_prob].append(msim.results['r_eff'].values[-1])
                     results['new_infections'][future_test_prob][venue_trace_prob].append(msim.results['new_infections'].values)
@@ -107,7 +107,8 @@ for thisfig in [resultsfolder, sensfolder]:
         t = list(results['new_infections'].keys())[(nplots-1-pn)//nv]
         v = list(results['new_infections'][t].keys())[pn%nv]
         if what =='new_infections':
-            return np.array([results['new_infections'][t][v][mm][214:] for mm in range(nm)])
+            #return np.array(([results['new_infections'][t][v][mm][214:] for mm in range(nm)]))
+            return np.array([[results['new_infections'][t][v][mm][200+i:214+i].sum() / 14 for i in range(306-214)] for mm in range(nm)])
         elif what == 'cum_infections':
             return results['cum_infections'][t][v]
 
@@ -120,7 +121,7 @@ for thisfig in [resultsfolder, sensfolder]:
         data = plinf(pn)
         for mi,mval in enumerate(mlevels):
             ax[pn].plot(range(len(data[mi,:])), data[mi,:], '-', lw=4, c=colors[mi], label=labels[mi], alpha=1.0)
-            val = sc.sigfig(plinf(pn, what='cum_infections')[mi],3)
+            val = sc.sigfig(plinf(pn, what='cum_infections')[mi],3) if plinf(pn, what='cum_infections')[mi]<100 else sc.sigfig(plinf(pn, what='cum_infections')[mi],2)
             ax[pn].text(0.1, 180-mi*15, val.rjust(6), fontsize=20, family='monospace', color=colors[mi])
 
         ax[pn].set_ylim(0, 200)
@@ -130,7 +131,7 @@ for thisfig in [resultsfolder, sensfolder]:
         if pn not in [0,5,10,15]:
             ax[pn].set_yticklabels([])
         else:
-            ax[pn].set_ylabel('Daily new infections')
+            ax[pn].set_ylabel('New infections')
         if pn not in range(nv):
             ax[pn].set_xticklabels([])
         else:
@@ -159,8 +160,6 @@ for thisfig in [resultsfolder, sensfolder]:
 mainres = sc.loadobj(f'{resultsfolder}/nsw_sweep_results.obj')
 sensres = sc.loadobj(f'{sensfolder}/nsw_sweep_results.obj')
 
-fig = pl.figure(figsize=(24,8))
-
 # Subplot sizes
 xgapl = 0.07
 xgapm = 0.02
@@ -168,7 +167,7 @@ xgapr = 0.02
 ygapb = 0.1
 ygapm = 0.02
 ygapt = 0.08
-nrows = 2
+nrows = 1
 ncols = 2
 dx = (1-(ncols-1)*xgapm-xgapl-xgapr)/ncols
 dy = (1-(nrows-1)*ygapm-ygapb-ygapt)/nrows
@@ -178,6 +177,8 @@ colors = pl.cm.GnBu(np.array([0.4,0.6,0.8,1.]))
 mlabels = ['0% masks', '25% masks', '50% masks', '75% masks']
 tlabels = ['50%', '65%', '80%', '90%']
 
+fig = pl.figure(figsize=(24,8*nrows))
+
 x = np.arange(len(tlabels))
 width = 0.2  # the width of the bars
 
@@ -186,13 +187,13 @@ datatoplot = {}
 
 datatoplot[0] = np.array([[mainres['cum_infections'][t][1.0][mi] for t in tlevels] for mi in range(nm)])
 datatoplot[1] = np.array([[sensres['cum_infections'][t][1.0][mi] for t in tlevels] for mi in range(nm)])
-datatoplot[2] = np.array([[mainres['cum_infections'][t][0.75][mi] for t in tlevels] for mi in range(nm)])
-datatoplot[3] = np.array([[sensres['cum_infections'][t][0.75][mi] for t in tlevels] for mi in range(nm)])
+#datatoplot[2] = np.array([[mainres['cum_quarantined'][t][1.0][mi] for t in tlevels] for mi in range(nm)])
+#datatoplot[3] = np.array([[sensres['cum_quarantined'][t][1.0][mi] for t in tlevels] for mi in range(nm)])
 
 # Headings
-pl.figtext(xgapl+0.001, ygapb+dy+0.01, '     Asymptomatic testing equal to symptomatic testing         ',
+pl.figtext(xgapl+0.001, ygapb+dy*nrows+ygapm*(nrows-1)+0.01, '     Asymptomatic testing equal to symptomatic testing         ',
            fontsize=30, fontweight='bold', bbox={'edgecolor':'none', 'facecolor':'silver', 'alpha':0.5, 'pad':4})
-pl.figtext(xgapl+xgapm+dx+0.001, ygapb+dy+0.01, '     Asymptomatic testing lower than symptomatic testing      ',
+pl.figtext(xgapl+xgapm+dx+0.001, ygapb+dy*nrows+ygapm*(nrows-1)+0.01, '     Asymptomatic testing lower than symptomatic testing      ',
            fontsize=30, fontweight='bold', bbox={'edgecolor':'none', 'facecolor':'silver', 'alpha':0.5, 'pad':4})
 
 # Make plots
@@ -204,11 +205,14 @@ for pn in range(nplots):
 
     ax[pn].set_xticks(x)
     ax[pn].set_xticklabels(tlabels)
-    ax[pn].set_ylim(0, 30e3)
+    if pn <2:
+        ax[pn].set_ylim(0, 20e3)
+        ax[pn].set_xlabel('Symptomatic testing rate')
+    else:
+        ax[pn].set_ylim(0, 250e3)
     sc.boxoff()
-    ax[pn].set_xlabel('Symptomatic testing rate')
 
-    if pn==0:
+    if pn in [0,2]:
         ax[pn].set_ylabel('Cumulative infections')
     if pn==1:
         pl.legend(loc='upper right', frameon=False, fontsize=20)
@@ -217,138 +221,72 @@ for pn in range(nplots):
 cv.savefig(f'{figsfolder}/fig3_bars.png', dpi=100)
 
 
+################################################################################################################
+# Figure X: trade-off heatmaps
+################################################################################################################
+
+# Subplot sizes
+xgapl = 0.07
+xgapm = 0.02
+xgapr = 0.02
+ygapb = 0.3
+ygapm = 0.02
+ygapt = 0.08
+nrows = 1
+ncols = nv
+dx = (1-(ncols-1)*xgapm-xgapl-xgapr)/ncols
+dy = (1-(nrows-1)*ygapm-ygapb-ygapt)/nrows
+nplots = nrows*ncols
+ax = {}
+
+# Create figure
+fig = pl.figure(figsize=(24,10))
+
+colors = pl.cm.GnBu(np.array([0.4,0.6,0.8,1.]))
+mlabels = ['0% masks', '25% masks', '50% masks', '75% masks']
+tlabels = ['50%', '65%', '80%', '90%']
+vlabels = ['0% tracing', '25% tracing', '50% tracing', '75% tracing', '100% tracing']
+
+M, T = np.meshgrid(mlevels, tlevels)
+mt = M.reshape(nt*nm,)
+tt = T.reshape(nt*nm,)
+cmin, cmax = 0., 5.
+lev_exp = np.arange(0., 5.1, 0.1)
+levs = np.power(10, lev_exp)
+
+# Load objects
+for pn,vl in enumerate(vlevels):
+
+    # Load in scenario multisims
+    zi1 = np.array([mainres['cum_infections'][ti][vl] for ti in tlevels])
+    z = zi1.reshape(nt*nm,)
+
+    # Set axis and plot
+    ax[pn] = pl.axes([xgapl+(dx+xgapm)*(pn%ncols), ygapb+(ygapm+dy)*(pn//ncols), dx, dy])
+    im = ax[pn].imshow(zi1, cmap='Oranges')
+
+    # Annotate
+    for i in range(nm):
+        for j in range(nt):
+            c = sc.sigfig(zi1[j, i],3)
+            ax[pn].text(i, j, str(c), va='center', ha='center')
+
+    # Axis and plot labelling
+    if pn == 0:
+        ax[pn].set_ylabel('Symptomatic testing rate', fontsize=24, labelpad=20)
+    ax[pn].set_xlabel('Mask uptake')
+    ax[pn].set_title(vlabels[pn])
+
+    ax[pn*100] = pl.axes([xgapl+(dx+xgapm)*(pn%ncols), 0.05, dx, 0.1])
+    cbar = pl.colorbar(im, cax=ax[pn*100])
+cv.savefig(f'{figsfolder}/figX_heatmaps.png', dpi=100)
+
+
+
+
 sc.toc(T)
 
 
 
 
 
-
-'''
-'''
-
-'''fig = pl.figure(figsize=(24,8))
-
-# Load objects
-for i,tp in enumerate([0.1, 0.15, 0.19]):
-
-    # Load in scenario multisims
-    zi1 = np.array([results['r_eff'][tp][mval] for mval in m])
-    zi2 = zi1.reshape((36,))
-
-    # Triangular smoothing
-    triang = mpl.tri.Triangulation(mt, vt)
-    interp_lin = mpl.tri.LinearTriInterpolator(triang, zi2)
-    zi_lin = interp_lin(M, V)
-
-    x0, y0, dx, dy = xgaps*(i+1)+mainplotwidth*i, ygaps, mainplotwidth, mainplotheight
-    ax = pl.axes([x0, y0, dx, dy])
-    im = ax.contourf(M, V, zi1, cmap=colormap, levels=np.linspace(0.0, 2, 100))
-
-    if i == 0:
-        ax.set_ylabel('Mask uptake in community settings', fontsize=24, labelpad=20)
-    if i == 1:
-        val = (results['r_eff'][0.15][0.4][1]+results['r_eff'][0.15][0.2][1])/2
-        ax.scatter([0.25], [0.3], c='k', s=100, zorder=10, marker='d')
-        ax.text(0.25 * 1.15, 0.3 * 1.15, f'Under NSW interventions\nas at September')
-    ax.set_xlabel('Venue-based tracing probability')
-    titles = ['65% testing probability', '80% testing probability', '90% testing probability']
-    ax.set_title(titles[i])
-
-cbar_ax = fig.add_axes([0.92, 0.1, 0.05, 0.7])
-cbar = pl.colorbar(im, ticks=np.linspace(0, 2.0, 5), cax=cbar_ax)
-cbar.ax.set_title('R_eff', rotation=0, pad=20, fontsize=24)
-
-#cbar_ax = fig.add_axes([0.92, 0.2, 0.01, 0.7])
-#cbar = pl.colorbar(im, ticks=np.linspace(0, 2.0, 5), cax=cbar_ax)
-#cbar.ax.set_title('$R_{e}$', rotation=0, pad=20, fontsize=24)
-
-cv.savefig(f'{figsfolder}/nsw_sweeps_r.png', dpi=100)
-
-
-bottom = pl.cm.get_cmap('Oranges', 128)
-top = pl.cm.get_cmap('Blues_r', 128)
-newcolors = np.vstack((top(np.linspace(0, 1, 128)),
-                       bottom(np.linspace(0, 1, 128))))
-newcmp = mpl.colors.ListedColormap(newcolors, name='OrangeBlue')
-colormap = newcmp
-colormap_label = 'OrangeBlue'
-
-to_plot = sc.objdict({
-    'Cumulative diagnoses': ['cum_diagnoses'],
-    'Cumulative infections': ['cum_infections'],
-    'New infections': ['new_infections'],
-    'Daily diagnoses': ['new_diagnoses'],
-    })
-
-'''
-
-
-################################################################################################
-# Figure 1: heat maps
-################################################################################################
-# Load results for plotting
-'''
-results = sc.loadobj(f'{resultsfolder}/nsw_sweep_results.obj')
-
-# Create figure
-fig = pl.figure(figsize=(24,8))
-
-# Plot locations
-ygaps = 0.1
-xgaps = 0.05
-remainingy = 1-2*ygaps
-remainingx = 1-(nt+1)*xgaps-.05
-mainplotheight = remainingy
-mainplotwidth = remainingx/nt
-
-M, V = np.meshgrid(mlevels, vlevels)
-mt = M.reshape(nv*nm,)
-vt = V.reshape(nv*nm,)
-cmin, cmax = 0., 5.
-lev_exp = np.arange(0., 5., 0.1)
-levs = np.power(10, lev_exp)
-
-# Load objects
-for i,tp in enumerate(tlevels):
-
-    # Load in scenario multisims
-    zi1 = np.array([results['cum_infections'][tp][vtrace] for vtrace in vlevels])
-    zi2 = zi1.reshape((nv*nm,))
-
-    # Triangular smoothing
-    triang = mpl.tri.Triangulation(mt, vt)
-    interp_lin = mpl.tri.LinearTriInterpolator(triang, zi2)
-    zi_lin = interp_lin(M, V)
-
-    x0, y0, dx, dy = xgaps*(i+1)+mainplotwidth*i, ygaps, mainplotwidth, mainplotheight
-    ax = pl.axes([x0, y0, dx, dy])
-
-    im = ax.contourf(M, V, zi_lin, levs, cmap='Oranges', norm=LogNorm())
-    cs = ax.contour(M, V, zi_lin, levels=[1000,10000], colors='k', linestyles='dashed', linewidths=3)
-    ax.clabel(cs, fmt='%d', colors='k', fontsize=18)
-#    ax.clabel(cs, colors='k', fontsize=18, manual=[(1, 0.2)])
-
-    #im = ax.contourf(M, V, zi_lin/1000, cmap='Oranges', levels=np.linspace(0.0, 50.0, 50))
-
-    if i == 0:
-        ax.set_ylabel('Venue-based tracing probability', fontsize=24, labelpad=20)
-    if i == 2:
-        val = results['cum_infections'][0.15][0.75][2]
-        ax.scatter([0.25], [0.3], c='k', s=100, zorder=10, marker='d')
-        ax.text(0.25 * 1.15, 0.3 * 1.15, f'{sc.sigfig(val,2)} infections estimated\nby end  of year if current\ninterventions continue')
-    ax.set_xlabel('Mask uptake in community settings')
-    titles = ['50% testing probability', '65% testing probability', '80% testing probability', '90% testing probability']
-    ax.set_title(titles[i])
-
-cbar_ax = fig.add_axes([0.92, 0.1, 0.05, 0.7])
-#cbar = pl.colorbar(im, ticks=np.linspace(0, 50, 11), cax=cbar_ax)
-cbar = pl.colorbar(im, cax=cbar_ax)
-cbar.ax.set_title('Infections\nOct-Dec\n(000s)', rotation=0, pad=20, fontsize=24)
-
-#cbar_ax = fig.add_axes([0.92, 0.2, 0.01, 0.7])
-#cbar = pl.colorbar(im, ticks=np.linspace(0, 2.0, 5), cax=cbar_ax)
-#cbar.ax.set_title('$R_{e}$', rotation=0, pad=20, fontsize=24)
-
-cv.savefig(f'{figsfolder}/fig1_heatmaps.png', dpi=100)
-'''

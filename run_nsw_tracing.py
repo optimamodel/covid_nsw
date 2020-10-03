@@ -131,7 +131,7 @@ def make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_t
                  load_pop=load_pop)
 
     if do_make_ints: sim.pars['interventions'] = make_ints(mask_eff=mask_eff, make_future_ints=make_future_ints, mask_uptake=mask_uptake, venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob)
-    sim.initialize()
+    #sim.initialize()
 
     return sim
 
@@ -142,14 +142,14 @@ def make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_t
 T = sc.tic()
 
 # Settings
-whattorun = ['calibration', 'tracingsweeps', 'maskscenarios'][1]
-domulti = False
+whattorun = ['calibration', 'tracingsweeps', 'maskscenarios'][0]
+domulti = True
 doplot = True
 dosave = True
-n_runs = 20
+n_runs = 10
 
 # Filepaths
-resultsfolder = 'sweepssens'
+resultsfolder = 'calibration'
 figsfolder = 'figs'
 datafile = 'nsw_epi_data_os_removed.csv'
 
@@ -172,7 +172,8 @@ if whattorun=='calibration':
     if domulti:
         msim = cv.MultiSim(base_sim=s0)
         msim.run(n_runs=n_runs)
-        if dosave: msim.save(f'{resultsfolder}/nsw_{whattorun}.obj')
+        msim.reduce()
+        if dosave: msim.save(f'nsw_{whattorun}.obj')
         if doplot:
             msim.plot(to_plot=to_plot, do_save=True, do_show=False, fig_path=f'{figsfolder}/nsw_{whattorun}.png',
                   legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=21)
