@@ -5,7 +5,6 @@ from collections import defaultdict
 import covasim as cv
 import covasim.defaults as cvd
 import covasim.utils as cvu
-import covasim_victoria as cvv
 import numba as nb
 import numpy as np
 import pandas as pd
@@ -44,7 +43,7 @@ def generate_people(n_people: int, mixing: pd.DataFrame, reference_ages: pd.Seri
     h_clusters, ages = _make_households(n_households, n_people, household_heads, mixing)
 
     contacts = cv.Contacts()
-    contacts['H'] = cvv.clusters_to_layer(h_clusters)
+    contacts['H'] = clusters_to_layer(h_clusters)
     people = cv.People(pars={'pop_size': n_people}, age=ages)
     people.contacts = contacts
 
@@ -58,19 +57,19 @@ def add_school_contacts(people: cv.People, mean_contacts: float):
 
     for age in range(5, 18):
         children_thisage = cvu.true(people.age == age)
-        classrooms.extend(cvv.create_clusters(children_thisage, mean_contacts))
+        classrooms.extend(create_clusters(children_thisage, mean_contacts))
 
         teachers = np.random.choice(cvu.true(people.age > 21), len(classrooms), replace=False)
         for i in range(len(classrooms)):
             classrooms[i].append(teachers[i])
 
-    people.contacts['S'] = cvv.clusters_to_layer(classrooms)
+    people.contacts['S'] = clusters_to_layer(classrooms)
 
 
 def add_work_contacts(people: cv.People, mean_contacts: float):
     work_inds = cvu.true((people.age > 18) & (people.age <= 65))
-    work_cl = cvv.create_clusters(work_inds, mean_contacts)
-    people.contacts['W'] = cvv.clusters_to_layer(work_cl)
+    work_cl = create_clusters(work_inds, mean_contacts)
+    people.contacts['W'] = clusters_to_layer(work_cl)
 
 
 def add_other_contacts(people: cv.People, layers: pd.DataFrame, legacy=True):
@@ -102,14 +101,14 @@ def add_other_contacts(people: cv.People, layers: pd.DataFrame, legacy=True):
         if layer['cluster_type'] == 'cluster':
             # Create a clustered layer based on the mean cluster size
             assert pd.isna(layer['dynamic']), 'Dynamic clusters not supported yet'
-            clusters = cvv.create_clusters(inds, layer['contacts'])
-            people.contacts[layer_name] = cvv.clusters_to_layer(clusters)
+            clusters = create_clusters(inds, layer['contacts'])
+            people.contacts[layer_name] = clusters_to_layer(clusters)
         elif layer['cluster_type'] == 'complete':
             # For a 'complete' layer, treat the layer members as a single cluster
             assert pd.isna(layer['dynamic']), 'Dynamic complete clusters not supported yet'
-            people.contacts[layer_name] = cvv.clusters_to_layer([inds])
+            people.contacts[layer_name] = clusters_to_layer([inds])
         elif layer['cluster_type'] == 'random':
-            people.contacts[layer_name] = cvv.RandomLayer(inds, layer['contacts'], layer['dispersion'], dynamic=(not pd.isna(layer['dynamic'])))
+            people.contacts[layer_name] = RandomLayer(inds, layer['contacts'], layer['dispersion'], dynamic=(not pd.isna(layer['dynamic'])))
         else:
             raise Exception(f'Unknown clustering type {layer["cluster_type"]}')
 
