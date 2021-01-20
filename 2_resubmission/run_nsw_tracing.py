@@ -329,7 +329,7 @@ if __name__ == '__main__':
                     print(f'... initialising {len(sims)} runs... ')
                     print('---------------\n')
                     msim = cv.MultiSim(sims)
-                    msim.run()
+                    msim.run(verbose=-1)
                     msim.reduce()
                     for r in res_to_keep:
                         if res_to_keep[0][:3] == 'cum':
