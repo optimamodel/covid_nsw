@@ -295,7 +295,7 @@ if __name__ == '__main__':
         labels = []
         fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
         mismatches = np.array(fitsummary.mismatches)
-        threshold = np.quantile(mismatches, 0.005)
+        threshold = np.quantile(mismatches, 0.05)
         # Set up lists for storing results to be plotting
         diagprobs = []
         infprobs = []
