@@ -354,53 +354,8 @@ if __name__ == '__main__':
                             else:
                                 results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
 
-
             if dosave:
                 sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{atp}.obj', results)
-
-
-
-    if whattorun=='maskscenarios':
-
-        mask_beta_change = [0.55,0.59,0.60,0.62,0.70]
-        all_layer_counts = {}
-        layer_remap = {'H': 0, 'S': 1, 'W': 2, 'church': 3, 'pSport': 3, 'cSport': 3, 'social': 3, 'C': 4,
-                       'entertainment': 4,
-                       'cafe_restaurant': 4, 'pub_bar': 4, 'transport': 4, 'public_parks': 4, 'large_events': 4,
-                       'importation': 4, 'seed_infection': 4}
-        n_new_layers = 5  # H, S, W, DC, SC
-
-        for jb in mask_beta_change:
-
-            # Make original sim
-            s0 = make_sim(mask_beta_change=jb, load_pop=True, popfile='nswppl.pop', datafile=datafile)
-            s0.run(until=today)
-
-            # Copy sims
-            sims = []
-            for seed in range(n_runs):
-                sim = s0.copy()
-                sim['rand_seed'] = seed
-                sim.set_seed()
-                sims.append(sim)
-            msim = cv.MultiSim(sims)
-            msim.run(n_runs=n_runs, reseed=True, noise=0, keep_people=True)
-
-            all_layer_counts[jb] = np.zeros((n_runs, s0.npts, n_new_layers))
-
-            for sn, sim in enumerate(msim.sims):
-                tt = sim.make_transtree()
-                for source_ind, target_ind in tt.transmissions:
-                    dd = tt.detailed[target_ind]
-                    date = dd['date']
-                    layer_num = layer_remap[dd['layer']]
-                    all_layer_counts[jb][sn, date, layer_num] += sim.rescale_vec[date]
-
-            if dosave: msim.save(f'{resultsfolder}/nsw_{whattorun}_{int(jb*100)}.obj')
-            if dosave: sc.saveobj(f'{resultsfolder}/nsw_layer_counts.obj', all_layer_counts)
-            if doplot:
-                msim.plot(to_plot=to_plot, do_save=True, do_show=False, fig_path=f'{figsfolder}/nsw_{whattorun}_{int(jb*100)}.png',
-                  legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=21)
 
 
 sc.toc(T)
