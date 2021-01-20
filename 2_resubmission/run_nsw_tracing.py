@@ -148,7 +148,7 @@ whattorun = ['quickfit', 'fullfit', 'finalisefit', 'tracingsweeps', 'maskscenari
 domulti = True
 doplot = True
 dosave = True
-n_runs = 100
+n_runs = 20
 
 # Filepaths
 resultsfolder = 'results'
@@ -199,6 +199,7 @@ if __name__ == '__main__':
     # Full parameter/seed search
     elif whattorun=='fullfit':
         fitsummary = sc.objdict()
+        cv.set_seed(1)
         betas = cvu.sample(dist='normal', par1=0.025, par2=0.002, size=100)
         fitsummary.betas = betas
         fitsummary.mismatches = []
