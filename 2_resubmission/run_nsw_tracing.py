@@ -295,7 +295,7 @@ if __name__ == '__main__':
         labels = []
         fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
         mismatches = np.array(fitsummary.mismatches)
-        threshold = np.quantile(mismatches, 0.05)
+        threshold = np.quantile(mismatches, 0.005)
         # Set up lists for storing results to be plotting
         diagprobs = []
         infprobs = []
@@ -304,10 +304,11 @@ if __name__ == '__main__':
 
             for name in res_to_keep: results[name][future_test_prob] = {}
             for venue_trace_prob in np.arange(0, 5) / 4:
-                for name in res_to_keep: results[name][future_test_prob][venue_trace_prob] = sc.objdict()
-                results[name][future_test_prob][venue_trace_prob].medians = []
-                results[name][future_test_prob][venue_trace_prob].diagprobs = []
-                results[name][future_test_prob][venue_trace_prob].infprobs = []
+                for name in res_to_keep:
+                    results[name][future_test_prob][venue_trace_prob] = sc.objdict()
+                    results[name][future_test_prob][venue_trace_prob].medians = []
+                    results[name][future_test_prob][venue_trace_prob].diagprobs = []
+                    results[name][future_test_prob][venue_trace_prob].infprobs = []
                 for mask_uptake in np.arange(0, 4) / 4:
 
                     sc.blank()
