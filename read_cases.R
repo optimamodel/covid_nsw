@@ -13,23 +13,24 @@ library (dplyr)
 library (lubridate)
 library (ggpubr)
 
-today = "2020/9/30"
+today = "2020/12/31" #"2020/9/30"
 
 # Set working directory
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-cases_by_source <- read.csv("confirmed_cases_table3_likely_source.csv")
+cases_by_source <- read.csv("data/confirmed_cases_table3_likely_source_dec.csv")
 cases_by_source$notification_date <- ymd(cases_by_source$notification_date)
+cases_by_source$likely_source_of_infection <- factor(cases_by_source$likely_source_of_infection)
 
 ss <- data.frame(date = seq(as.Date("2020/3/9"), as.Date(today), "days")) %>%
   left_join(cases_by_source  %>% group_by(notification_date) %>% 
-              filter(likely_source_of_infection %in% c("Locally acquired - contact of a confirmed case and/or in a known cluster", "Locally acquired - source not identified"))%>%
+              filter(likely_source_of_infection %in% c("Locally acquired - investigation ongoing", "Locally acquired - linked to known case or cluster", "Locally acquired - no links to known case or cluster"))%>%
               count(notification_date) %>% 
               rename(date=notification_date,new_diagnoses=n))  %>% replace(is.na(.), 0)
 
 
 all <- data.frame(date = seq(as.Date("2020/6/1"), as.Date(today), "days")) %>%
   left_join(cases_by_source  %>% group_by(notification_date) %>% 
-              filter(likely_source_of_infection %in% c("Locally acquired - contact of a confirmed case and/or in a known cluster", "Locally acquired - source not identified", "Interstate","Overseas"))%>%
+              filter(likely_source_of_infection %in% c("Locally acquired - investigation ongoing", "Locally acquired - linked to known case or cluster", "Locally acquired - no links to known case or cluster", "Interstate","Overseas"))%>%
               count(notification_date) %>% 
               rename(date=notification_date,new_diagnoses=n))  %>% replace(is.na(.), 0)
 
@@ -37,7 +38,7 @@ sum(all$new_diagnoses)
 
 locunknown <- data.frame(date = seq(as.Date("2020/6/1"), as.Date(today), "days")) %>%
   left_join(cases_by_source  %>% group_by(notification_date) %>% 
-              filter(likely_source_of_infection %in% c("Locally acquired - source not identified"))%>%
+              filter(likely_source_of_infection %in% c("Locally acquired - no links to known case or cluster"))%>%
               count(notification_date) %>% 
               rename(date=notification_date,new_diagnoses=n))  %>% replace(is.na(.), 0)
 sum(locunknown$new_diagnoses)
@@ -50,11 +51,20 @@ sum(locunknown$new_diagnoses)
 #              rename(date=notification_date,new_diagnoses=n))  %>% replace(is.na(.), 0)
 
 
-nsw_epi_data <- read.csv("nsw_epi_data.csv")
+nsw_epi_data <- read.csv("data/nsw_epi_data.csv")
 
-ss$new_deaths <- c(nsw_epi_data$new_deaths[-(1:8)],rep(0,49))
+n_missing <- length(ss$new_diagnoses)-length(nsw_epi_data$new_deaths[-(1:8)])
+ss$new_deaths <- c(nsw_epi_data$new_deaths[-(1:8)],rep(0,n_missing))
+# Fill in deaths from https://www.abc.net.au/news/2020-03-17/coronavirus-cases-data-reveals-how-covid-19-spreads-in-australia/12060704?nw=0#deaths
 
-write.csv(ss,"nsw_epi_data_os_removed.csv")  
+ss$new_deaths[ss$date==as.Date("2020/8/2")] = 1
+ss$new_deaths[ss$date==as.Date("2020/8/13")] = 1
+ss$new_deaths[ss$date==as.Date("2020/8/16")] = 1
+ss$new_deaths[ss$date==as.Date("2020/9/1")] = 1
+ss$new_deaths[ss$date==as.Date("2020/12/28")] = 1
+
+
+write.csv(ss,"2_resubmission/nsw_epi_data_os_removed_dec.csv")  
 
 ########################################
 # Read testing data

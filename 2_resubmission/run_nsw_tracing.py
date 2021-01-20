@@ -7,6 +7,7 @@ import numpy as np
 today = '2020-09-30'
 tomorrow = '2020-10-01'
 runtil = tomorrow #'2020-12-31'
+eoy = '2020-12-31'
 
 def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3):
     # Make historical interventions
@@ -104,11 +105,13 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
     return ints
 
 
-def make_sim(beta, do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=None):
+def make_sim(beta, end_day=None, do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None,
+             mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=None):
 
     layers = ['H', 'S', 'W', 'C', 'church', 'pSport', 'cSport', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport', 'public_parks', 'large_events', 'social']
 
-    end_day = runtil
+    if end_day is None:
+        end_day = runtil
 
     pars = {'pop_size': 100e3,
             'pop_infected': 110,
@@ -144,8 +147,8 @@ def make_sim(beta, do_make_ints=True, make_future_ints=True, mask_uptake=None, v
 T = sc.tic()
 
 # Settings
-whattorun = ['quickfit', 'fullfit', 'finalisefit', 'tracingsweeps', 'maskscenarios'][1]
-domulti = True
+whattorun = ['quickfit', 'fullfit', 'finalisefit', 'validation', 'tracingsweeps', 'maskscenarios'][4]
+domulti = False
 doplot = True
 dosave = True
 n_runs = 20
@@ -154,6 +157,7 @@ n_runs = 20
 resultsfolder = 'results'
 figsfolder = 'figs'
 datafile = 'nsw_epi_data_os_removed.csv'
+decdatafile = 'nsw_epi_data_os_removed_dec.csv'
 
 # Plot settings
 to_plot = sc.objdict({
@@ -226,21 +230,23 @@ if __name__ == '__main__':
 
 
     # Run calibration with best-fitting seeds and parameters
-    elif whattorun=='finialisefit':
+    elif whattorun=='finalisefit':
         sims = []
-        fitsummary = sc.loadobj(f'{resfolder}/fitsummary.obj')
-        allseeds = np.array(fitsummary.mismatches)
+        fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
+        mismatches = np.array(fitsummary.mismatches)
+        threshold = np.quantile(mismatches, 0.005)
+        good = 0
 
         for bn, beta in enumerate(fitsummary.betas):
-            goodseeds = [i for i in range(n_runs) if fitsummary[beta][rd][tnn][i] < 200] #200:11,284:100
+            goodseeds = [i for i in range(n_runs) if mismatches[bn, i] < threshold]
             sc.blank()
             print('---------------\n')
-            print(f'Beta: {beta}, RD: {rd}, symp_test: {tn}, goodseeds: {len(goodseeds)}')
+            print(f'BN: {bn}, Beta: {beta} goodseeds: {len(goodseeds)}')
             print('---------------\n')
             good += len(goodseeds)
             if len(goodseeds) > 0:
-                p = sc.objdict(beta=beta,delta_beta=0.6,rd=rd,tn=tn)
-                s0 = make_sim(seed=1, p=p, end_day=data_end)
+                s0 = make_sim(beta, do_make_ints=True, mask_uptake=0.3, venue_trace_prob=0.5, future_test_prob=0.9,
+                              mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=datafile)
                 for seed in goodseeds:
                     sim = s0.copy()
                     sim['rand_seed'] = seed
@@ -251,51 +257,85 @@ if __name__ == '__main__':
         msim = cv.MultiSim(sims)
         msim.run()
 
-        if save_sim:
-            msim.save(f'{resfolder}/denmark_sim.obj')
-        if do_plot:
+        if dosave:
+            msim.save(f'{resultsfolder}/nsw_sim.obj')
+        if doplot:
             msim.reduce()
-            msim.plot(to_plot=to_plot, do_save=do_save, do_show=False, fig_path=f'denmark.png',
+            msim.plot(to_plot=to_plot, do_save=do_save, do_show=False, fig_path=f'nsw.png',
                       legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=50, n_cols=2)
+
+
+    # Make sim for validation
+    if whattorun=='validation':
+
+        beta = 0.026
+        s0 = make_sim(beta, end_day=eoy, do_make_ints=True, mask_uptake=0.3, venue_trace_prob=0.5, future_test_prob=0.9, mask_eff=0.3,
+                      load_pop=True, popfile='nswppl.pop', datafile=decdatafile)
+
+        if domulti:
+            msim = cv.MultiSim(base_sim=s0)
+            msim.run(n_runs=n_runs)
+            msim.reduce()
+            if dosave: msim.save(f'nsw_{whattorun}.obj')
+            if doplot:
+                msim.plot(to_plot=to_plot, do_save=True, do_show=False, fig_path=f'{figsfolder}/nsw_{whattorun}.png',
+                      legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=21)
+        else:
+            s0.run()
+            if doplot:
+                s0.plot(to_plot=to_plot, do_save=True, do_show=False, fig_path=f'{figsfolder}/nsw_{whattorun}.png',
+                      legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=35)
 
 
     if whattorun=='tracingsweeps':
 
-        res_to_keep = ['cum_infections', 'new_infections', 'cum_quarantined']
+        res_to_keep = ['cum_infections', 'new_infections', 'cum_diagnoses', 'new_diagnoses', 'cum_quarantined']
 
         results = {k:{} for k in res_to_keep}
         labels = []
+        fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
+        mismatches = np.array(fitsummary.mismatches)
+        threshold = np.quantile(mismatches, 0.05)
 
-        for future_test_prob in [0.19]: #[0.067, 0.1, 0.15, 0.19]
+        for future_test_prob in [0.067]:#, 0.1, 0.15, 0.19]:
 
             for name in res_to_keep: results[name][future_test_prob] = {}
             for venue_trace_prob in np.arange(0, 5) / 4:
                 for name in res_to_keep: results[name][future_test_prob][venue_trace_prob] = []
                 for mask_uptake in np.arange(0, 4) / 4:
 
-                    # Make original sim
-                    s0 = make_sim(do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake, venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob, mask_eff=0.3, load_pop=True,
-                                  popfile='nswppl.pop', datafile=datafile)
-                    s0.run(until=today)
-                    print(f'mask_uptake: {mask_uptake}, venue_trace_prob: {venue_trace_prob}, future_test_prob: {future_test_prob}')
-
-                    # Copy sims
+                    sc.blank()
+                    print('---------------\n')
+                    print(
+                        f'mask_uptake: {mask_uptake}, venue_trace_prob: {venue_trace_prob}, future_test_prob: {future_test_prob}')
+                    print('---------------\n')
                     sims = []
-                    for seed in range(n_runs):
-                        sim = s0.copy()
-                        sim.label = "T" + str(future_test_prob) + "_M" + str(mask_uptake) + "_V" + str(venue_trace_prob)
-                        sim['rand_seed'] = seed
-                        sim.set_seed()
-                        sims.append(sim)
 
+                    for bn, beta in enumerate(fitsummary.betas):
+                        goodseeds = [i for i in range(n_runs) if mismatches[bn, i] < threshold]
+                        if len(goodseeds) > 0:
+                            s0 = make_sim(beta, do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake,
+                                          venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob,
+                                          mask_eff=0.3, load_pop=True,
+                                          popfile='nswppl.pop', datafile=datafile)
+                            for seed in goodseeds:
+                                sim = s0.copy()
+                                sim['rand_seed'] = seed
+                                sim.set_seed()
+                                sim.label = f"Sim {seed}"
+                                sims.append(sim)
+
+                    print('---------------\n')
+                    print(f'... initialising {len(sims)} runs... ')
+                    print('---------------\n')
                     msim = cv.MultiSim(sims)
                     msim.run()
                     msim.reduce()
-                    if dosave:
-                        msim.save(f'{resultsfolder}/nsw_{whattorun}_T{int(future_test_prob*100)}_M{int(mask_uptake*100)}_V{int(venue_trace_prob*100)}.obj')
-                    results['cum_infections'][future_test_prob][venue_trace_prob].append(msim.results['cum_infections'].values[-1]-msim.results['cum_infections'].values[214])
-                    results['cum_quarantined'][future_test_prob][venue_trace_prob].append(msim.results['cum_quarantined'].values[-1]-msim.results['cum_quarantined'].values[214])
-                    results['new_infections'][future_test_prob][venue_trace_prob].append(msim.results['new_infections'].values)
+                    for r in res_to_keep:
+                        if res_to_keep[0][:3] == 'cum':
+                            results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values[-1]-msim.results[r].values[214])
+                        else:
+                            results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values)
         if dosave:
             sc.saveobj(f'{resultsfolder}/nsw_sweep_results.obj', results)
 
