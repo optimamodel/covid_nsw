@@ -106,7 +106,7 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
 
 
 def make_sim(beta, end_day=None, do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None,
-             mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=None):
+             mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=None, verbose=0.1):
 
     layers = ['H', 'S', 'W', 'C', 'church', 'pSport', 'cSport', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport', 'public_parks', 'large_events', 'social']
 
@@ -128,7 +128,7 @@ def make_sim(beta, end_day=None, do_make_ints=True, make_future_ints=True, mask_
             'start_day': '2020-03-01',
             'end_day': end_day,
             'rel_death_prob': 2.5,
-            'verbose': .1}
+            'verbose': verbose}
 
     sim = cv.Sim(pars=pars,
                  datafile=datafile,
@@ -317,7 +317,7 @@ if __name__ == '__main__':
                             s0 = make_sim(beta, do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake,
                                           venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob,
                                           mask_eff=0.3, load_pop=True,
-                                          popfile='nswppl.pop', datafile=datafile)
+                                          popfile='nswppl.pop', datafile=datafile, verbose=-1)
                             for seed in goodseeds:
                                 sim = s0.copy()
                                 sim['rand_seed'] = seed
