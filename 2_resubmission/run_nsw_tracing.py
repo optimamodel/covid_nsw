@@ -1,4 +1,5 @@
 import covasim as cv
+import covasim.utils as cvu
 import pandas as pd
 import sciris as sc
 import numpy as np
