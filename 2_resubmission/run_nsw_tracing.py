@@ -303,7 +303,7 @@ if __name__ == '__main__':
         for future_test_prob in [0.067]:#, 0.1, 0.15, 0.19]:
 
             for name in res_to_keep: results[name][future_test_prob] = {}
-            for venue_trace_prob in np.arange(0, 5) / 4:
+            for venue_trace_prob in np.arange(0, 1) / 4: #np.arange(0, 5) / 4
                 for name in res_to_keep:
                     results[name][future_test_prob][venue_trace_prob] = sc.objdict()
                     results[name][future_test_prob][venue_trace_prob].medians = []
