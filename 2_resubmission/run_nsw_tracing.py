@@ -63,7 +63,7 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
     symp_prob_lockdown = 0.07  # 0.065 #Increased testing during lockdown
     symp_prob_postlockdown = 0.19 # 0.165 # Testing since lockdown
     asymp_quar_prob_postlockdown = (1-(1-symp_prob_postlockdown)**10)
-    future_asymp_test_prob = (1-(1-future_test_prob)**10)/2
+    future_asymp_test_prob = (1-(1-future_test_prob)**10) #/2
 
     ints += [cv.test_prob(start_day=0, end_day=lockdown, symp_prob=symp_prob_prelockdown, asymp_quar_prob=0.01, do_plot=False),
              cv.test_prob(start_day=lockdown, end_day=reopen2, symp_prob=symp_prob_lockdown, asymp_quar_prob=0.01,do_plot=False),
@@ -300,10 +300,10 @@ if __name__ == '__main__':
         diagprobs = []
         infprobs = []
 
-        for future_test_prob in [0.067]:#, 0.1, 0.15, 0.19]:
+        for future_test_prob in [0.067]: #, 0.1, 0.15, 0.19]:
 
             for name in res_to_keep: results[name][future_test_prob] = {}
-            for venue_trace_prob in np.arange(0, 1) / 4: #np.arange(0, 5) / 4
+            for venue_trace_prob in np.arange(0, 5) / 4:
                 for name in res_to_keep:
                     results[name][future_test_prob][venue_trace_prob] = sc.objdict()
                     results[name][future_test_prob][venue_trace_prob].medians = []
@@ -351,8 +351,8 @@ if __name__ == '__main__':
                             results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
 
 
-        if dosave:
-            sc.saveobj(f'{resultsfolder}/nsw_sweep_results.obj', results)
+            if dosave:
+                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{future_test_prob}.obj', results)
 
 
 
