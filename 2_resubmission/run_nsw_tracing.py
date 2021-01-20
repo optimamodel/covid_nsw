@@ -9,7 +9,7 @@ tomorrow = '2020-10-01'
 runtil = tomorrow #'2020-12-31'
 eoy = '2020-12-31'
 
-def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3):
+def make_ints(atp=None, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3):
     # Make historical interventions
     initresponse = '2020-03-15'
     lockdown = '2020-03-23'
@@ -64,6 +64,8 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
     symp_prob_postlockdown = 0.19 # 0.165 # Testing since lockdown
     asymp_quar_prob_postlockdown = (1-(1-symp_prob_postlockdown)**10)
     future_asymp_test_prob = (1-(1-future_test_prob)**10) #/2
+    if future_asymp_test_prob=='half':
+        future_asymp_test_prob /= 2
 
     ints += [cv.test_prob(start_day=0, end_day=lockdown, symp_prob=symp_prob_prelockdown, asymp_quar_prob=0.01, do_plot=False),
              cv.test_prob(start_day=lockdown, end_day=reopen2, symp_prob=symp_prob_lockdown, asymp_quar_prob=0.01,do_plot=False),
@@ -105,7 +107,7 @@ def make_ints(make_future_ints=True, mask_uptake=None, venue_trace_prob=None, fu
     return ints
 
 
-def make_sim(beta, end_day=None, do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None,
+def make_sim(beta, atp=None, end_day=None, do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None,
              mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=None, verbose=0.1):
 
     layers = ['H', 'S', 'W', 'C', 'church', 'pSport', 'cSport', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport', 'public_parks', 'large_events', 'social']
@@ -135,7 +137,7 @@ def make_sim(beta, end_day=None, do_make_ints=True, make_future_ints=True, mask_
                  popfile=popfile,
                  load_pop=load_pop)
 
-    if do_make_ints: sim.pars['interventions'] = make_ints(mask_eff=mask_eff, make_future_ints=make_future_ints, mask_uptake=mask_uptake, venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob)
+    if do_make_ints: sim.pars['interventions'] = make_ints(atp=atp, mask_eff=mask_eff, make_future_ints=make_future_ints, mask_uptake=mask_uptake, venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob)
     #sim.initialize()
 
     return sim
@@ -300,59 +302,61 @@ if __name__ == '__main__':
         diagprobs = []
         infprobs = []
 
-        for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
+        for atp in ['equal','half']:
 
-            for name in res_to_keep: results[name][future_test_prob] = {}
-            for venue_trace_prob in np.arange(0, 5) / 4:
-                for name in res_to_keep:
-                    results[name][future_test_prob][venue_trace_prob] = sc.objdict()
-                    results[name][future_test_prob][venue_trace_prob].medians = []
-                    results[name][future_test_prob][venue_trace_prob].diagprobs = []
-                    results[name][future_test_prob][venue_trace_prob].infprobs = []
-                for mask_uptake in np.arange(0, 4) / 4:
+            for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
-                    sc.blank()
-                    print('---------------\n')
-                    print(
-                        f'mask_uptake: {mask_uptake}, venue_trace_prob: {venue_trace_prob}, future_test_prob: {future_test_prob}')
-                    print('---------------\n')
-                    sims = []
+                for name in res_to_keep: results[name][future_test_prob] = {}
+                for venue_trace_prob in np.arange(0, 5) / 4:
+                    for name in res_to_keep:
+                        results[name][future_test_prob][venue_trace_prob] = sc.objdict()
+                        results[name][future_test_prob][venue_trace_prob].medians = []
+                        results[name][future_test_prob][venue_trace_prob].diagprobs = []
+                        results[name][future_test_prob][venue_trace_prob].infprobs = []
+                    for mask_uptake in np.arange(0, 4) / 4:
 
-                    for bn, beta in enumerate(fitsummary.betas):
-                        goodseeds = [i for i in range(n_runs) if mismatches[bn, i] < threshold]
-                        if len(goodseeds) > 0:
-                            s0 = make_sim(beta, end_day=eoy, do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake,
-                                          venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob,
-                                          mask_eff=0.3, load_pop=True,
-                                          popfile='nswppl.pop', datafile=datafile, verbose=-1)
-                            for seed in goodseeds:
-                                sim = s0.copy()
-                                sim['rand_seed'] = seed
-                                sim.set_seed()
-                                sim.label = f"Sim {seed}"
-                                sims.append(sim)
+                        sc.blank()
+                        print('---------------\n')
+                        print(
+                            f'mask_uptake: {mask_uptake}, venue_trace_prob: {venue_trace_prob}, future_test_prob: {future_test_prob}')
+                        print('---------------\n')
+                        sims = []
 
-                    print('---------------\n')
-                    print(f'... initialising {len(sims)} runs... ')
-                    print('---------------\n')
-                    msim = cv.MultiSim(sims)
-                    msim.run(verbose=-1)
+                        for bn, beta in enumerate(fitsummary.betas):
+                            goodseeds = [i for i in range(n_runs) if mismatches[bn, i] < threshold]
+                            if len(goodseeds) > 0:
+                                s0 = make_sim(beta, atp=atp, end_day=eoy, do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake,
+                                              venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob,
+                                              mask_eff=0.3, load_pop=True,
+                                              popfile='nswppl.pop', datafile=datafile, verbose=-1)
+                                for seed in goodseeds:
+                                    sim = s0.copy()
+                                    sim['rand_seed'] = seed
+                                    sim.set_seed()
+                                    sim.label = f"Sim {seed}"
+                                    sims.append(sim)
 
-                    # Calculate probabilities
-                    for r in res_to_keep:
-                        results[r][future_test_prob][venue_trace_prob].diagprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)])
-                        results[r][future_test_prob][venue_trace_prob].infprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)])
+                        print('---------------\n')
+                        print(f'... initialising {len(sims)} runs... ')
+                        print('---------------\n')
+                        msim = cv.MultiSim(sims)
+                        msim.run(verbose=-1)
 
-                    msim.reduce()
-                    for r in res_to_keep:
-                        if res_to_keep[0][:3] == 'cum':
-                            results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[214])
-                        else:
-                            results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
+                        # Calculate probabilities
+                        for r in res_to_keep:
+                            results[r][future_test_prob][venue_trace_prob].diagprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)])
+                            results[r][future_test_prob][venue_trace_prob].infprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)])
+
+                        msim.reduce()
+                        for r in res_to_keep:
+                            if res_to_keep[0][:3] == 'cum':
+                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[214])
+                            else:
+                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
 
 
-        if dosave:
-            sc.saveobj(f'{resultsfolder}/nsw_sweep_results.obj', results)
+            if dosave:
+                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{atp}.obj', results)
 
 
 
