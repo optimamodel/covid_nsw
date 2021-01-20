@@ -300,7 +300,7 @@ if __name__ == '__main__':
         diagprobs = []
         infprobs = []
 
-        for future_test_prob in [0.067]: #, 0.1, 0.15, 0.19]:
+        for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
             for name in res_to_keep: results[name][future_test_prob] = {}
             for venue_trace_prob in np.arange(0, 5) / 4:
@@ -351,8 +351,8 @@ if __name__ == '__main__':
                             results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
 
 
-            if dosave:
-                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{future_test_prob}.obj', results)
+        if dosave:
+            sc.saveobj(f'{resultsfolder}/nsw_sweep_results.obj', results)
 
 
 
