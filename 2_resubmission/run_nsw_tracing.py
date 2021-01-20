@@ -337,6 +337,12 @@ if __name__ == '__main__':
                     print('---------------\n')
                     msim = cv.MultiSim(sims)
                     msim.run(verbose=-1)
+
+                    # Calculate probabilities
+                    for r in res_to_keep:
+                        results[r][future_test_prob][venue_trace_prob].diagprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)])
+                        results[r][future_test_prob][venue_trace_prob].infprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)])
+
                     msim.reduce()
                     for r in res_to_keep:
                         if res_to_keep[0][:3] == 'cum':
@@ -344,9 +350,6 @@ if __name__ == '__main__':
                         else:
                             results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
 
-                    # Calculate probabilities
-                    results[r][future_test_prob][venue_trace_prob].diagprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)])
-                    results[r][future_test_prob][venue_trace_prob].infprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)])
 
         if dosave:
             sc.saveobj(f'{resultsfolder}/nsw_sweep_results.obj', results)
