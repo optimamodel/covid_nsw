@@ -320,7 +320,7 @@ if __name__ == '__main__':
                     for bn, beta in enumerate(fitsummary.betas):
                         goodseeds = [i for i in range(n_runs) if mismatches[bn, i] < threshold]
                         if len(goodseeds) > 0:
-                            s0 = make_sim(beta, do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake,
+                            s0 = make_sim(beta, end_day=eoy, do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake,
                                           venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob,
                                           mask_eff=0.3, load_pop=True,
                                           popfile='nswppl.pop', datafile=datafile, verbose=-1)
