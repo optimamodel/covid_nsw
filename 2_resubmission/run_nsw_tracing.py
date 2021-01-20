@@ -296,12 +296,18 @@ if __name__ == '__main__':
         fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
         mismatches = np.array(fitsummary.mismatches)
         threshold = np.quantile(mismatches, 0.05)
+        # Set up lists for storing results to be plotting
+        diagprobs = []
+        infprobs = []
 
         for future_test_prob in [0.067]:#, 0.1, 0.15, 0.19]:
 
             for name in res_to_keep: results[name][future_test_prob] = {}
             for venue_trace_prob in np.arange(0, 5) / 4:
-                for name in res_to_keep: results[name][future_test_prob][venue_trace_prob] = []
+                for name in res_to_keep: results[name][future_test_prob][venue_trace_prob] = sc.objdict()
+                results[name][future_test_prob][venue_trace_prob].medians = []
+                results[name][future_test_prob][venue_trace_prob].diagprobs = []
+                results[name][future_test_prob][venue_trace_prob].infprobs = []
                 for mask_uptake in np.arange(0, 4) / 4:
 
                     sc.blank()
@@ -333,9 +339,14 @@ if __name__ == '__main__':
                     msim.reduce()
                     for r in res_to_keep:
                         if res_to_keep[0][:3] == 'cum':
-                            results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values[-1]-msim.results[r].values[214])
+                            results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[214])
                         else:
-                            results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values)
+                            results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
+
+                    # Calculate probabilities
+                    results[r][future_test_prob][venue_trace_prob].diagprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)])
+                    results[r][future_test_prob][venue_trace_prob].infprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)])
+
         if dosave:
             sc.saveobj(f'{resultsfolder}/nsw_sweep_results.obj', results)
 
