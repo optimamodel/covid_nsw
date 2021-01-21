@@ -303,9 +303,9 @@ if __name__ == '__main__':
         # Set up lists for storing results to be plotting
         diagprobs = []
         infprobs = []
-        future_mask_eff = 0.45
+        future_mask_eff = None #0.45
 
-        for atp in ['equal']: # ,'half']:
+        for atp in ['half']: # ,'half']:
 
             for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
