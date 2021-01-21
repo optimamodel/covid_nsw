@@ -352,7 +352,7 @@ if __name__ == '__main__':
 
                         msim.reduce()
                         for r in res_to_keep:
-                            if res_to_keep[r][:3] == 'cum':
+                            if r[:3] == 'cum':
                                 results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[sim.day(tomorrow)])
                             else:
                                 results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
