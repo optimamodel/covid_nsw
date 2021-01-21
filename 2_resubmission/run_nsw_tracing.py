@@ -9,7 +9,7 @@ tomorrow = '2020-10-01'
 runtil = tomorrow #'2020-12-31'
 eoy = '2020-12-31'
 
-def make_ints(atp=None, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3):
+def make_ints(atp=None, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None, mask_eff=0.3, future_mask_eff=None):
     # Make historical interventions
     initresponse = '2020-03-15'
     lockdown = '2020-03-23'
@@ -53,8 +53,10 @@ def make_ints(atp=None, make_future_ints=True, mask_uptake=None, venue_trace_pro
                                     'public_parks', 'large_events'])
              ]
 
+    if future_mask_eff is None:
+        future_mask_eff = mask_eff
     if make_future_ints:
-        ints += [cv.change_beta(days=[today] * 8, changes=[(1 - mask_uptake) * comm_beta_aug + mask_uptake * mask_eff * comm_beta_aug] * 8,
+        ints += [cv.change_beta(days=[today] * 8, changes=[(1 - mask_uptake) * comm_beta_aug + mask_uptake * future_mask_eff * comm_beta_aug] * 8,
                        layers=['church', 'C', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport',
                                'public_parks', 'large_events'])]
 
@@ -108,7 +110,7 @@ def make_ints(atp=None, make_future_ints=True, mask_uptake=None, venue_trace_pro
 
 
 def make_sim(beta, atp=None, end_day=None, do_make_ints=True, make_future_ints=True, mask_uptake=None, venue_trace_prob=None, future_test_prob=None,
-             mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=None, verbose=0.1):
+             mask_eff=0.3, future_mask_eff=None, load_pop=True, popfile='nswppl.pop', datafile=None, verbose=0.1):
 
     layers = ['H', 'S', 'W', 'C', 'church', 'pSport', 'cSport', 'entertainment', 'cafe_restaurant', 'pub_bar', 'transport', 'public_parks', 'large_events', 'social']
 
@@ -137,7 +139,7 @@ def make_sim(beta, atp=None, end_day=None, do_make_ints=True, make_future_ints=T
                  popfile=popfile,
                  load_pop=load_pop)
 
-    if do_make_ints: sim.pars['interventions'] = make_ints(atp=atp, mask_eff=mask_eff, make_future_ints=make_future_ints, mask_uptake=mask_uptake, venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob)
+    if do_make_ints: sim.pars['interventions'] = make_ints(atp=atp, mask_eff=mask_eff, make_future_ints=make_future_ints, mask_uptake=mask_uptake, venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob, future_mask_eff=future_mask_eff)
     #sim.initialize()
 
     return sim
@@ -301,8 +303,9 @@ if __name__ == '__main__':
         # Set up lists for storing results to be plotting
         diagprobs = []
         infprobs = []
+        future_mask_eff = 0.45
 
-        for atp in ['equal','half']:
+        for atp in ['equal']: #,'half']:
 
             for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
@@ -327,7 +330,7 @@ if __name__ == '__main__':
                             if len(goodseeds) > 0:
                                 s0 = make_sim(beta, atp=atp, end_day=eoy, do_make_ints=True, make_future_ints=True, mask_uptake=mask_uptake,
                                               venue_trace_prob=venue_trace_prob, future_test_prob=future_test_prob,
-                                              mask_eff=0.3, load_pop=True,
+                                              mask_eff=0.3, future_mask_eff=future_mask_eff, load_pop=True,
                                               popfile='nswppl.pop', datafile=datafile, verbose=-1)
                                 for seed in goodseeds:
                                     sim = s0.copy()
@@ -355,7 +358,7 @@ if __name__ == '__main__':
                                 results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
 
             if dosave:
-                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{atp}.obj', results)
+                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{future_mask_eff}.obj', results)
 
 
 sc.toc(T)
