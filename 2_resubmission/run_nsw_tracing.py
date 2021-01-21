@@ -154,7 +154,7 @@ T = sc.tic()
 whattorun = ['quickfit', 'fullfit', 'finalisefit', 'validation', 'tracingsweeps', 'maskscenarios'][4]
 domulti = False
 doplot = True
-dosave = True
+dosave = False
 n_runs = 20
 
 # Filepaths
@@ -293,7 +293,7 @@ if __name__ == '__main__':
 
     if whattorun=='tracingsweeps':
 
-        res_to_keep = ['cum_infections', 'new_infections', 'cum_diagnoses', 'new_diagnoses', 'cum_quarantined']
+        res_to_keep = ['cum_infections', 'new_infections', 'cum_diagnoses', 'new_diagnoses', 'cum_quarantined', 'diagprobs', 'infprobs']
 
         results = {k:{} for k in res_to_keep}
         labels = []
@@ -303,9 +303,9 @@ if __name__ == '__main__':
         # Set up lists for storing results to be plotting
         diagprobs = []
         infprobs = []
-        future_mask_eff = None #0.45
+        future_mask_eff = 0.45
 
-        for atp in ['equal','half']:
+        for atp in ['equal']: # ,'half']:
 
             for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
@@ -313,9 +313,7 @@ if __name__ == '__main__':
                 for venue_trace_prob in np.arange(0, 5) / 4:
                     for name in res_to_keep:
                         results[name][future_test_prob][venue_trace_prob] = sc.objdict()
-                        results[name][future_test_prob][venue_trace_prob].medians = []
-                        results[name][future_test_prob][venue_trace_prob].diagprobs = []
-                        results[name][future_test_prob][venue_trace_prob].infprobs = []
+                        results[name][future_test_prob][venue_trace_prob] = []
                     for mask_uptake in np.arange(0, 4) / 4:
 
                         sc.blank()
@@ -345,20 +343,21 @@ if __name__ == '__main__':
                         msim = cv.MultiSim(sims)
                         msim.run(verbose=-1)
 
-                        # Calculate probabilities
-                        for r in res_to_keep:
-                            results[r][future_test_prob][venue_trace_prob].diagprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)])
-                            results[r][future_test_prob][venue_trace_prob].infprobs.append([len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)])
-
                         msim.reduce()
                         for r in res_to_keep:
                             if r[:3] == 'cum':
-                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[sim.day(tomorrow)])
-                            else:
-                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
+                                results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values[-1]-msim.results[r].values[sim.day(tomorrow)])
+                            elif r[:3] == 'new':
+                                results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values)
+                            elif r == 'infprobs':
+                                infprobs = [len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)]
+                                results[r][future_test_prob][venue_trace_prob].append(infprobs)
+                            elif r == 'diagprobs':
+                                diagprobs = [len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)]
+                                results[r][future_test_prob][venue_trace_prob].append(diagprobs)
 
             if dosave:
-                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{atp}.obj', results)
+                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{future_mask_eff}.obj', results)
 
 
 sc.toc(T)
