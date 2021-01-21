@@ -299,13 +299,13 @@ if __name__ == '__main__':
         labels = []
         fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
         mismatches = np.array(fitsummary.mismatches)
-        threshold = np.quantile(mismatches, 0.05)
+        threshold = np.quantile(mismatches, 0.05) #0.05 for 100 runs
         # Set up lists for storing results to be plotting
         diagprobs = []
         infprobs = []
-        future_mask_eff = 0.45
+        future_mask_eff = None #0.45
 
-        for atp in ['equal']: #,'half']:
+        for atp in ['equal','half']:
 
             for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
@@ -352,13 +352,13 @@ if __name__ == '__main__':
 
                         msim.reduce()
                         for r in res_to_keep:
-                            if res_to_keep[0][:3] == 'cum':
-                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[214])
+                            if res_to_keep[r][:3] == 'cum':
+                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[sim.day(tomorrow)])
                             else:
                                 results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
 
             if dosave:
-                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{future_mask_eff}.obj', results)
+                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{atp}.obj', results)
 
 
 sc.toc(T)
