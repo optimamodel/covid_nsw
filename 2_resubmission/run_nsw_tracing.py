@@ -66,7 +66,7 @@ def make_ints(atp=None, make_future_ints=True, mask_uptake=None, venue_trace_pro
     symp_prob_postlockdown = 0.19 # 0.165 # Testing since lockdown
     asymp_quar_prob_postlockdown = (1-(1-symp_prob_postlockdown)**10)
     future_asymp_test_prob = (1-(1-future_test_prob)**10) #/2
-    if future_asymp_test_prob=='half':
+    if atp=='half':
         future_asymp_test_prob /= 2
 
     ints += [cv.test_prob(start_day=0, end_day=lockdown, symp_prob=symp_prob_prelockdown, asymp_quar_prob=0.01, do_plot=False),
