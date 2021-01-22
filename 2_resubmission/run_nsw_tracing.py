@@ -350,7 +350,7 @@ if __name__ == '__main__':
                         results[name][future_test_prob][venue_trace_prob] = sc.objdict()
                         results[name][future_test_prob][venue_trace_prob].medians = []
                         results[name][future_test_prob][venue_trace_prob].low = []
-                        results[name][future_test_prob][venue_trace_prob].low = []
+                        results[name][future_test_prob][venue_trace_prob].high = []
                     for mask_uptake in np.arange(0, 4) / 4:
 
                         sc.blank()
