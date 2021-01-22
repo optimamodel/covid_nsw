@@ -154,10 +154,11 @@ T = sc.tic()
 whattorun = ['quickfit', 'fullfit', 'finalisefit', 'validation', 'tracingsweeps', 'maskscenarios'][4]
 domulti = False
 doplot = True
-dosave = False
+dosave = True
 n_runs = 20
 
 # Filepaths
+resultsfolder = 'results'
 resultsfolder = 'results'
 figsfolder = 'figs'
 datafile = 'nsw_epi_data_os_removed.csv'
