@@ -338,9 +338,9 @@ if __name__ == '__main__':
         fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
         mismatches = np.array(fitsummary.mismatches)
         threshold = np.quantile(mismatches, 0.05) #0.05 for 100 runs
-        future_mask_eff = None #0.45
+        future_mask_eff = 0.45
 
-        for atp in ['equal','half']:
+        for atp in ['equal']:
 
             for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
@@ -398,7 +398,7 @@ if __name__ == '__main__':
                                 results[r][future_test_prob][venue_trace_prob].medians.append(diagprobs)
 
             if dosave:
-                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{atp}.obj', results)
+                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{future_mask_eff}.obj', results)
 
 
 sc.toc(T)
