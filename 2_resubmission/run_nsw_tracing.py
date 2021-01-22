@@ -304,9 +304,9 @@ if __name__ == '__main__':
         # Set up lists for storing results to be plotting
         diagprobs = []
         infprobs = []
-        future_mask_eff = None #0.45
+        future_mask_eff = 0.45
 
-        for atp in ['half']: # ,'half']:
+        for atp in ['equal']: # ,'half']:
 
             for future_test_prob in [0.067, 0.1, 0.15, 0.19]:
 
@@ -358,7 +358,7 @@ if __name__ == '__main__':
                                 results[r][future_test_prob][venue_trace_prob].append(diagprobs)
 
             if dosave:
-                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{future_mask_eff}.obj', results)
+                sc.saveobj(f'{resultsfolder}/nsw_sweep_results_ACTUAL{future_mask_eff}.obj', results)
 
 
 sc.toc(T)
