@@ -151,7 +151,7 @@ def make_sim(beta, atp=None, end_day=None, do_make_ints=True, make_future_ints=T
 T = sc.tic()
 
 # Settings
-whattorun = ['quickfit', 'fullfit', 'finalisefit', 'validation', 'tracingsweeps', 'maskscenarios'][4]
+whattorun = ['quickfit', 'fullfit', 'finalisefit', 'makepeople', 'validation', 'tracingsweeps', 'maskscenarios'][5]
 domulti = False
 doplot = True
 dosave = True
@@ -270,6 +270,43 @@ if __name__ == '__main__':
                       legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=50, n_cols=2)
 
 
+    # Run calibration with best-fitting seeds and parameters
+    elif whattorun=='makepeople':
+        sims = []
+        fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
+        mismatches = np.array(fitsummary.mismatches)
+        threshold = np.quantile(mismatches, 0.005)
+        good = 0
+
+        for bn, beta in enumerate(fitsummary.betas):
+            goodseeds = [i for i in range(n_runs) if mismatches[bn, i] < threshold]
+            sc.blank()
+            print('---------------\n')
+            print(f'BN: {bn}, Beta: {beta} goodseeds: {len(goodseeds)}')
+            print('---------------\n')
+            good += len(goodseeds)
+            if len(goodseeds) > 0:
+                s0 = make_sim(beta, do_make_ints=True, mask_uptake=0.3, venue_trace_prob=0.5, future_test_prob=0.9,
+                              mask_eff=0.3, load_pop=True, popfile='nswppl.pop', datafile=datafile)
+                for seed in goodseeds:
+                    sim = s0.copy()
+                    sim['rand_seed'] = seed
+                    sim.set_seed()
+                    sim.label = f"Sim {seed}"
+                    sims.append(sim)
+
+        msim = cv.MultiSim(sims)
+        msim.run(keep_people=True)
+
+        if dosave:
+            msim.save(f'{resultsfolder}/nsw_sim_people.obj', keep_people=True)
+        if doplot:
+            msim.reduce()
+            msim.plot(to_plot=to_plot, do_save=do_save, do_show=False, fig_path=f'nsw.png',
+                      legend_args={'loc': 'upper left'}, axis_args={'hspace': 0.4}, interval=50, n_cols=2)
+
+
+
     # Make sim for validation
     if whattorun=='validation':
 
@@ -311,7 +348,9 @@ if __name__ == '__main__':
                 for venue_trace_prob in np.arange(0, 5) / 4:
                     for name in res_to_keep:
                         results[name][future_test_prob][venue_trace_prob] = sc.objdict()
-                        results[name][future_test_prob][venue_trace_prob] = []
+                        results[name][future_test_prob][venue_trace_prob].medians = []
+                        results[name][future_test_prob][venue_trace_prob].low = []
+                        results[name][future_test_prob][venue_trace_prob].low = []
                     for mask_uptake in np.arange(0, 4) / 4:
 
                         sc.blank()
@@ -344,15 +383,19 @@ if __name__ == '__main__':
                         msim.reduce()
                         for r in res_to_keep:
                             if r[:3] == 'cum':
-                                results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values[-1]-msim.results[r].values[sim.day(tomorrow)])
+                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[sim.day(tomorrow)])
+                                results[r][future_test_prob][venue_trace_prob].low.append(msim.results[r].low[-1]-msim.results[r].low[sim.day(tomorrow)])
+                                results[r][future_test_prob][venue_trace_prob].high.append(msim.results[r].values[-1]-msim.results[r].high[sim.day(tomorrow)])
                             elif r[:3] == 'new':
-                                results[r][future_test_prob][venue_trace_prob].append(msim.results[r].values)
+                                results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
+                                results[r][future_test_prob][venue_trace_prob].low.append(msim.results[r].values)
+                                results[r][future_test_prob][venue_trace_prob].high.append(msim.results[r].values)
                             elif r == 'infprobs':
                                 infprobs = [len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)]
-                                results[r][future_test_prob][venue_trace_prob].append(infprobs)
+                                results[r][future_test_prob][venue_trace_prob].medians.append(infprobs)
                             elif r == 'diagprobs':
                                 diagprobs = [len([i for i in range(len(msim.sims)) if msim.sims[i].results['new_diagnoses'].values[-1] > j]) / len(msim.sims) for j in range(200)]
-                                results[r][future_test_prob][venue_trace_prob].append(diagprobs)
+                                results[r][future_test_prob][venue_trace_prob].medians.append(diagprobs)
 
             if dosave:
                 sc.saveobj(f'{resultsfolder}/nsw_sweep_results_{atp}.obj', results)
