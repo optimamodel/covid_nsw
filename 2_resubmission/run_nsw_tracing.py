@@ -338,7 +338,7 @@ if __name__ == '__main__':
         fitsummary = sc.loadobj(f'{resultsfolder}/fitsummary.obj')
         mismatches = np.array(fitsummary.mismatches)
         threshold = np.quantile(mismatches, 0.05) #0.05 for 100 runs
-        future_mask_eff = 0.45
+        future_mask_eff = 0.15
 
         for atp in ['equal']:
 
