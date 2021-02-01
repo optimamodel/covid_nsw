@@ -385,11 +385,11 @@ if __name__ == '__main__':
                             if r[:3] == 'cum':
                                 results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values[-1]-msim.results[r].values[sim.day(tomorrow)])
                                 results[r][future_test_prob][venue_trace_prob].low.append(msim.results[r].low[-1]-msim.results[r].low[sim.day(tomorrow)])
-                                results[r][future_test_prob][venue_trace_prob].high.append(msim.results[r].values[-1]-msim.results[r].high[sim.day(tomorrow)])
+                                results[r][future_test_prob][venue_trace_prob].high.append(msim.results[r].high[-1]-msim.results[r].high[sim.day(tomorrow)])
                             elif r[:3] == 'new':
                                 results[r][future_test_prob][venue_trace_prob].medians.append(msim.results[r].values)
-                                results[r][future_test_prob][venue_trace_prob].low.append(msim.results[r].values)
-                                results[r][future_test_prob][venue_trace_prob].high.append(msim.results[r].values)
+                                results[r][future_test_prob][venue_trace_prob].low.append(msim.results[r].low)
+                                results[r][future_test_prob][venue_trace_prob].high.append(msim.results[r].high)
                             elif r == 'infprobs':
                                 infprobs = [len([i for i in range(len(msim.sims)) if msim.sims[i].results['n_exposed'].values[-1] > j]) / len(msim.sims) for j in range(2000)]
                                 results[r][future_test_prob][venue_trace_prob].medians.append(infprobs)

@@ -11,7 +11,6 @@
 library (ggplot2)
 library (dplyr)
 library (lubridate)
-library (ggpubr)
 
 today = "2020/12/31" #"2020/9/30"
 
@@ -34,7 +33,16 @@ all <- data.frame(date = seq(as.Date("2020/6/1"), as.Date(today), "days")) %>%
               count(notification_date) %>% 
               rename(date=notification_date,new_diagnoses=n))  %>% replace(is.na(.), 0)
 
+allever <- data.frame(date = seq(as.Date("2020/3/1"), as.Date(today), "days")) %>%
+  left_join(cases_by_source  %>% group_by(notification_date) %>% 
+              filter(likely_source_of_infection %in% c("Locally acquired - investigation ongoing", "Locally acquired - linked to known case or cluster", "Locally acquired - no links to known case or cluster", "Interstate","Overseas"))%>%
+              count(notification_date) %>% 
+              rename(date=notification_date,new_diagnoses=n))  %>% replace(is.na(.), 0)
+
+
+
 sum(all$new_diagnoses)
+sum(allever$new_diagnoses)
 
 locunknown <- data.frame(date = seq(as.Date("2020/6/1"), as.Date(today), "days")) %>%
   left_join(cases_by_source  %>% group_by(notification_date) %>% 
